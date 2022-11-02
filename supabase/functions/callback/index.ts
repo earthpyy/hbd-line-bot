@@ -36,12 +36,9 @@ bot.on("join", async (event: any) => {
 });
 
 bot.on("leave", async (event: any) => {
-  console.log(getChatIdFromEvent(event))
   const { error } = await supabase
     .from("chats")
-    .update({
-      active: false,
-    })
+    .update({ active: false })
     .eq("id", getChatIdFromEvent(event));
   if (error) {
     console.error(error);
