@@ -16,13 +16,21 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SECRET") ?? ""
 );
 
-function getChatIdFromEvent(event: any) {
-  return event.source.groupId || event.source.roomId;
+function getGroupIdFromEvent(event: any) {
+  return event.source.groupId;
 }
 
 bot.on("join", async (event: any) => {
-  const { error } = await supabase.from("chats").upsert({
-    id: getChatIdFromEvent(event),
+  const groupId = getGroupIdFromEvent(event);
+  if (!groupId) {
+    await event.reply(
+      "This app does not support multi-user chat. Please create a new group."
+    );
+    return;
+  }
+
+  const { error } = await supabase.from("groups").upsert({
+    id: groupId,
     active: true,
     joined_at: dayjs().toDate(),
   });
@@ -37,9 +45,9 @@ bot.on("join", async (event: any) => {
 
 bot.on("leave", async (event: any) => {
   const { error } = await supabase
-    .from("chats")
+    .from("groups")
     .update({ active: false })
-    .eq("id", getChatIdFromEvent(event));
+    .eq("id", getGroupIdFromEvent(event));
   if (error) {
     console.error(error);
   }
