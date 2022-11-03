@@ -21,6 +21,7 @@ function getGroupIdFromEvent(event: any) {
 }
 
 bot.on("join", async (event: any) => {
+  // get group id and check if it is not join multi-user chat event
   const groupId = getGroupIdFromEvent(event);
   if (!groupId) {
     await event.reply(
@@ -29,6 +30,7 @@ bot.on("join", async (event: any) => {
     return;
   }
 
+  // create group
   const { error } = await supabase.from("groups").upsert({
     id: groupId,
     active: true,
@@ -39,6 +41,28 @@ bot.on("join", async (event: any) => {
     await event.reply("Error!");
     return;
   }
+
+  // fetch members
+  const member = await event.source.member();
+  await Promise.all(
+    member.memberIds.map(async (memberId: string) => {
+      const profile = await bot.getGroupMemberProfile(groupId, memberId);
+
+      // create group member
+      const { error } = await supabase.from("group_members").upsert({
+        group_id: groupId,
+        user_id: profile.userId,
+        display_name: profile.displayName,
+        picture_url: profile.pictureUrl,
+        joined_at: dayjs().toDate(),
+      });
+      if (error) {
+        console.error(error);
+        await event.reply("Error!");
+        return;
+      }
+    })
+  );
 
   await event.reply("Hello!");
 });
